@@ -1,0 +1,68 @@
+/* ================= 主题变量 ================= */
+:root {
+  --content-width: 860px;
+  --font-body: system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-code: Consolas, 'Courier New', monospace;
+  --font-size: 16px;
+  --line-height: 1.7;
+}
+
+body[data-theme="light"] {
+  --bg: #ffffff;
+  --fg: #24292f;
+  --muted: #8a8f98;
+  --faint: #b6bcc4;
+  --accent: #0366d6;
+  --accent-soft: rgba(3, 102, 214, 0.12);
+  --sidebar-bg: #f6f7f9;
+  --toolbar-bg: #fbfbfc;
+  --border: #e4e7eb;
+  --code-bg: #f3f4f6;
+  --quote-fg: #6a737d;
+  --quote-border: #dfe2e5;
+  --table-head-bg: #f6f8fa;
+  --selection: rgba(3, 102, 214, 0.18);
+  --hover: rgba(0, 0, 0, 0.06);
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --mark-bg: #fff3b0;
+}
+
+body[data-theme="night"] {
+  --bg: #1e2126;
+  --fg: #d5d9e0;
+  --muted: #7d8490;
+  --faint: #565d68;
+  --accent: #58a6ff;
+  --accent-soft: rgba(88, 166, 255, 0.16);
+  --sidebar-bg: #191c21;
+  --toolbar-bg: #22262d;
+  --border: #333a44;
+  --code-bg: #2a2f37;
+  --quote-fg: #8b949e;
+  --quote-border: #3d444d;
+  --table-head-bg: #262b33;
+  --selection: rgba(88, 166, 255, 0.28);
+  --hover: rgba(255, 255, 255, 0.08);
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --mark-bg: #7a6a00;
+}
+
+body[data-theme="sepia"] {
+  --bg: #f8f2e4;
+  --fg: #3f3a30;
+  --muted: #9a917f;
+  --faint: #b9b0a0;
+  --accent: #a05a00;
+  --accent-soft: rgba(160, 90, 0, 0.12);
+  --sidebar-bg: #f1e9d7;
+  --toolbar-bg: #f5eedd;
+  --border: #e2d8c2;
+  --code-bg: #efe7d3;
+  --quote-fg: #8b8171;
+  --quote-border: #ddd2ba;
+  --table-head-bg: #f0e8d4;
+  --selection: rgba(160, 90, 0, 0.18);
+  --hover: rgba(120, 90, 30, 0.08);
+  --shadow: 0 8px 30px rgba(100, 80, 30, 0.18);
+  --mark-bg: #ffe9a8;
+}

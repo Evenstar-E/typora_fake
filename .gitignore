@@ -1,0 +1,16 @@
+# 依赖目录（仅测试需要，应用本身无需 npm install）
+node_modules/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时调试文件
+test/_*
+*.log
+
+# 编辑器
+.vscode/
+.idea/
+typora_fake.lnk

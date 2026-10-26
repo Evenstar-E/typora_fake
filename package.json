@@ -1,0 +1,25 @@
+{
+  "name": "marklite",
+  "version": "1.0.0",
+  "description": "轻量级 Typora 风格 Markdown 编辑器",
+  "main": "server.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node test/roundtrip.js && node test/smoke.js && node test/ai.js",
+    "test:unit": "node test/roundtrip.js",
+    "test:smoke": "node test/smoke.js",
+    "test:ai": "node test/ai.js",
+    "start": "node server.js"
+  },
+  "keywords": ["markdown", "editor", "typora", "katex", "wysiwyg"],
+  "author": "Evenstar-E",
+  "license": "MIT",
+  "type": "commonjs",
+  "private": "true",
+  "devDependencies": {
+    "jsdom": "^30.1.3",
+    "puppeteer-core": "^25.15.0"
+  }
+}

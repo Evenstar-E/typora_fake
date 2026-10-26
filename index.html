@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarkLite - Markdown 编辑器</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📝</text></svg>">
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<link rel="stylesheet" href="vendor/codemirror/codemirror.css">
+<link rel="stylesheet" href="vendor/highlight/github.min.css" id="hljs-light" media="all">
+<link rel="stylesheet" href="vendor/highlight/github-dark.min.css" id="hljs-dark" media="none" disabled>
+<link rel="stylesheet" href="css/themes.css">
+<link rel="stylesheet" href="css/editor.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body data-theme="light">
+
+<!-- ==================== 工具栏 ==================== -->
+<header id="toolbar">
+  <div class="tb-group">
+    <button class="tb-btn" id="btn-open" title="打开文件 (Ctrl+O)">📂</button>
+    <button class="tb-btn" id="btn-save" title="保存 (Ctrl+S)">💾</button>
+    <button class="tb-btn" id="btn-new" title="新建 (Ctrl+N)">📄</button>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-group">
+    <select id="sel-block" class="tb-select" title="段落格式">
+      <option value="p">正文</option>
+      <option value="h1">标题 1</option>
+      <option value="h2">标题 2</option>
+      <option value="h3">标题 3</option>
+      <option value="h4">标题 4</option>
+      <option value="h5">标题 5</option>
+      <option value="h6">标题 6</option>
+      <option value="blockquote">引用</option>
+      <option value="pre">代码块</option>
+    </select>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-group">
+    <button class="tb-btn fmt" data-cmd="bold" title="加粗 (Ctrl+B)"><b>B</b></button>
+    <button class="tb-btn fmt" data-cmd="italic" title="斜体 (Ctrl+I)"><i>I</i></button>
+    <button class="tb-btn fmt" data-cmd="strikeThrough" title="删除线"><s>S</s></button>
+    <button class="tb-btn fmt" data-cmd="inlineCode" title="行内代码">&lt;/&gt;</button>
+    <button class="tb-btn fmt" data-cmd="clearFormat" title="清除格式">⌫</button>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-group">
+    <button class="tb-btn" data-cmd="insertUnorderedList" title="无序列表">•≡</button>
+    <button class="tb-btn" data-cmd="insertOrderedList" title="有序列表">1≡</button>
+    <button class="tb-btn" data-cmd="taskList" title="任务列表">☑</button>
+    <button class="tb-btn" data-cmd="link" title="链接 (Ctrl+K)">🔗</button>
+    <button class="tb-btn" data-cmd="image" title="图片">🖼</button>
+    <button class="tb-btn" data-cmd="table" title="表格">⊞</button>
+    <button class="tb-btn" data-cmd="mathBlock" title="数学公式块 (∑)">∑</button>
+    <button class="tb-btn" data-cmd="hr" title="分割线">―</button>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-group">
+    <button class="tb-btn" data-cmd="undo" title="撤销 (Ctrl+Z)">↩</button>
+    <button class="tb-btn" data-cmd="redo" title="重做 (Ctrl+Y)">↪</button>
+  </div>
+  <div class="tb-spacer"></div>
+  <div class="tb-group">
+    <button class="tb-btn" id="btn-ai" title="AI 写作助手（本机 Claude Code）">✨</button>
+    <button class="tb-btn" id="btn-source" title="源代码模式 (Ctrl+/)">&lt;&gt;</button>
+    <button class="tb-btn" id="btn-sidebar" title="侧边栏">☰</button>
+    <button class="tb-btn" id="btn-settings" title="字体与主题设置">Aa</button>
+    <button class="tb-btn" id="btn-export" title="导出">⤓</button>
+  </div>
+</header>
+
+<div id="main">
+  <!-- ==================== 侧边栏 ==================== -->
+  <aside id="sidebar">
+    <div class="side-tabs">
+      <span class="side-tab active" data-tab="outline">大纲</span>
+      <span class="side-tab" data-tab="files">文件</span>
+    </div>
+    <div id="side-outline" class="side-pane"></div>
+    <div id="side-files" class="side-pane hidden">
+      <div class="recent-title">最近文件</div>
+      <div id="recent-list"></div>
+    </div>
+  </aside>
+
+  <!-- ==================== 编辑区 ==================== -->
+  <div id="editor-wrap">
+    <div id="find-bar" class="hidden">
+      <input id="find-input" type="text" placeholder="查找">
+      <span id="find-count">0/0</span>
+      <button id="find-prev" class="fb-btn" title="上一个 (Shift+Enter)">↑</button>
+      <button id="find-next" class="fb-btn" title="下一个 (Enter)">↓</button>
+      <button id="find-toggle-replace" class="fb-btn" title="展开替换">⇄</button>
+      <input id="replace-input" type="text" placeholder="替换为" class="hidden">
+      <button id="replace-one" class="fb-btn hidden">替换</button>
+      <button id="replace-all" class="fb-btn hidden">全部</button>
+      <button id="find-close" class="fb-btn" title="关闭 (Esc)">×</button>
+    </div>
+    <div id="img-banner" class="hidden">
+      <span id="img-banner-text"></span>
+      <button id="img-banner-btn" class="mini-btn primary">选择文档文件夹…</button>
+      <button id="img-banner-close" class="mini-btn">×</button>
+    </div>
+    <div id="editor-scroll">
+      <div id="editor" contenteditable="true" spellcheck="false"></div>
+      <div id="source-wrap" class="hidden">
+        <textarea id="source"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 状态栏 ==================== -->
+<footer id="statusbar">
+  <span id="st-file">未命名</span>
+  <span class="st-spacer"></span>
+  <span id="st-words">字数 0</span>
+  <span id="st-state">已保存</span>
+</footer>
+
+<!-- ==================== 公式编辑浮层 ==================== -->
+<div id="math-pop" class="popover hidden">
+  <div class="pop-title">LaTeX 公式</div>
+  <textarea id="math-input" rows="3" spellcheck="false" placeholder="输入 LaTeX，如 e^{i\pi}+1=0"></textarea>
+  <div id="math-preview"></div>
+  <div class="pop-btns">
+    <button id="math-del" class="mini-btn danger">删除</button>
+    <span class="st-spacer"></span>
+    <button id="math-cancel" class="mini-btn">取消</button>
+    <button id="math-ok" class="mini-btn primary">完成</button>
+  </div>
+</div>
+
+<!-- ==================== 链接浮层 ==================== -->
+<div id="link-pop" class="popover hidden">
+  <div class="pop-title">插入链接</div>
+  <input id="link-text" type="text" placeholder="链接文字">
+  <input id="link-url" type="text" placeholder="https://">
+  <div class="pop-btns">
+    <button id="link-cancel" class="mini-btn">取消</button>
+    <button id="link-ok" class="mini-btn primary">确定</button>
+  </div>
+</div>
+
+<!-- ==================== 图片浮层 ==================== -->
+<div id="img-pop" class="popover hidden">
+  <div class="pop-title">插入图片</div>
+  <input id="img-url" type="text" placeholder="图片地址 URL，或选择本地图片">
+  <input id="img-alt" type="text" placeholder="图片描述 (alt)">
+  <div class="pop-btns">
+    <button id="img-local" class="mini-btn">本地图片…</button>
+    <span class="st-spacer"></span>
+    <button id="img-cancel" class="mini-btn">取消</button>
+    <button id="img-ok" class="mini-btn primary">插入</button>
+  </div>
+</div>
+
+<!-- ==================== 设置面板 ==================== -->
+<div id="settings-panel" class="popover hidden">
+  <div class="pop-title">字体与主题</div>
+  <label class="set-row">主题
+    <select id="set-theme">
+      <option value="light">明亮</option>
+      <option value="night">夜间</option>
+      <option value="sepia">书卷</option>
+    </select>
+  </label>
+  <label class="set-row">西文字体
+    <select id="set-font-latin">
+      <option value="system-ui">系统默认</option>
+      <option value="'Times New Roman'">Times New Roman</option>
+      <option value="Georgia">Georgia</option>
+      <option value="'Palatino Linotype'">Palatino</option>
+      <option value="Garamond">Garamond</option>
+      <option value="'Segoe UI'">Segoe UI</option>
+      <option value="Arial">Arial</option>
+    </select>
+  </label>
+  <label class="set-row">中文字体
+    <select id="set-font-cjk">
+      <option value="'Microsoft YaHei'">微软雅黑</option>
+      <option value="SimSun">宋体</option>
+      <option value="SimHei">黑体</option>
+      <option value="KaiTi">楷体</option>
+      <option value="FangSong">仿宋</option>
+    </select>
+  </label>
+  <label class="set-row">代码字体
+    <select id="set-codefont">
+      <option value="Consolas, 'Courier New', monospace">Consolas</option>
+      <option value="'Cascadia Code', Consolas, monospace">Cascadia Code</option>
+      <option value="'JetBrains Mono', Consolas, monospace">JetBrains Mono</option>
+      <option value="'Courier New', monospace">Courier New</option>
+      <option value="'Fira Code', monospace">Fira Code</option>
+    </select>
+  </label>
+  <label class="set-row">字号 <span id="font-size-val">16</span>px
+    <input type="range" id="set-size" min="12" max="26" value="16" step="1">
+  </label>
+  <label class="set-row">行高 <span id="line-height-val">1.7</span>
+    <input type="range" id="set-lineheight" min="1.2" max="2.4" value="1.7" step="0.1">
+  </label>
+  <label class="set-row">内容宽度
+    <select id="set-width">
+      <option value="720">窄</option>
+      <option value="860" selected>中</option>
+      <option value="1080">宽</option>
+      <option value="99999">铺满</option>
+    </select>
+  </label>
+  <label class="set-row">专注模式
+    <input type="checkbox" id="set-focus">
+  </label>
+  <label class="set-row">打字机模式
+    <input type="checkbox" id="set-typewriter">
+  </label>
+</div>
+
+<!-- ==================== 导出菜单 ==================== -->
+<div id="export-menu" class="popover hidden">
+  <button class="menu-item" id="exp-html">导出为 HTML（自包含）</button>
+  <button class="menu-item" id="exp-pdf">打印 / 导出 PDF</button>
+  <button class="menu-item" id="exp-md">另存为 Markdown…</button>
+</div>
+
+<!-- ==================== AI 写作助手面板 ==================== -->
+<aside id="ai-panel" class="hidden">
+  <div class="ai-head">
+    <span>✨ AI 写作助手</span>
+    <span class="st-spacer"></span>
+    <button id="ai-close" class="fb-btn" title="关闭">×</button>
+  </div>
+  <div class="ai-chips" id="ai-chips">
+    <button class="ai-chip" data-ins="润色这段文字，保持原意，让语言更流畅自然">润色</button>
+    <button class="ai-chip" data-ins="在不丢失关键信息的前提下精简这段内容，压缩到原来的一半左右">精简</button>
+    <button class="ai-chip" data-ins="扩写这段内容，补充细节与论述，保持原有风格">扩写</button>
+    <button class="ai-chip" data-ins="顺着这段内容的风格和思路自然地继续往下写">续写</button>
+    <button class="ai-chip" data-ins="把这段内容翻译成地道的英文">中译英</button>
+    <button class="ai-chip" data-ins="把这段内容翻译成流畅的中文">英译中</button>
+    <button class="ai-chip" data-ins="用简洁的语言分点总结这段内容的要点">总结</button>
+    <button class="ai-chip" data-ins="修正这段内容中的语法、用词和标点错误，保持原意">语法纠错</button>
+  </div>
+  <textarea id="ai-instruction" rows="2" spellcheck="false" placeholder="自定义指令，如：改成更正式的语气"></textarea>
+  <div class="ai-actions">
+    <button id="ai-send" class="mini-btn primary">发送</button>
+    <button id="ai-stop" class="mini-btn" disabled>停止</button>
+    <span id="ai-status" title=""></span>
+  </div>
+  <div id="ai-output" class="ai-empty">选择文中内容后点快捷指令，或直接输入指令对全文操作</div>
+  <div class="ai-apply">
+    <button id="ai-replace" class="mini-btn">替换选区</button>
+    <button id="ai-insert" class="mini-btn">插入光标处</button>
+    <button id="ai-copy" class="mini-btn">复制</button>
+  </div>
+</aside>
+
+<input type="file" id="file-input" accept=".md,.markdown,.mdown,.mkd,.txt" class="hidden">
+<input type="file" id="img-input" accept="image/*" class="hidden">
+
+<!-- ==================== 第三方库 ==================== -->
+<script src="vendor/markdown-it.min.js"></script>
+<script src="vendor/katex/katex.min.js"></script>
+<script src="vendor/highlight/highlight.min.js"></script>
+<script src="vendor/turndown.js"></script>
+<script src="vendor/turndown-plugin-gfm.js"></script>
+<script src="vendor/codemirror/codemirror.js"></script>
+<script src="vendor/codemirror/xml.js"></script>
+<script src="vendor/codemirror/javascript.js"></script>
+<script src="vendor/codemirror/css.js"></script>
+<script src="vendor/codemirror/htmlmixed.js"></script>
+<script src="vendor/codemirror/markdown.min.js"></script>
+<script src="vendor/codemirror/active-line.js"></script>
+
+<!-- ==================== 应用 ==================== -->
+<script src="js/md.js"></script>
+<script src="js/serialize.js"></script>
+<script src="js/wysiwyg.js"></script>
+<script src="js/fileio.js"></script>
+<script src="js/find.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

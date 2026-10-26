@@ -1,0 +1,213 @@
+/* ================= 编辑区排版（Typora 风格） ================= */
+
+#editor {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 32px 48px 40vh 48px;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  color: var(--fg);
+  caret-color: var(--accent);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+#editor ::selection { background: var(--selection); }
+
+/* 空段落占位提示 */
+#editor p:only-child:has(> br:only-child):first-child::before,
+#editor.is-empty p:first-child::before {
+  content: "开始输入 Markdown，支持 # 标题、**加粗**、$公式$、``` 代码块…";
+  color: var(--faint);
+  position: absolute;
+  pointer-events: none;
+}
+#editor p { position: relative; }
+
+#editor h1, #editor h2, #editor h3,
+#editor h4, #editor h5, #editor h6 {
+  font-family: var(--font-body);
+  line-height: 1.35;
+  margin: 1.4em 0 0.6em;
+  font-weight: 600;
+}
+#editor h1 { font-size: 1.9em; padding-bottom: 0.25em; border-bottom: 1px solid var(--border); }
+#editor h2 { font-size: 1.55em; padding-bottom: 0.2em; border-bottom: 1px solid var(--border); }
+#editor h3 { font-size: 1.3em; }
+#editor h4 { font-size: 1.15em; }
+#editor h5 { font-size: 1.05em; }
+#editor h6 { font-size: 1em; color: var(--muted); }
+
+#editor p { margin: 0.55em 0; }
+
+#editor a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+#editor a:hover { border-bottom-color: var(--accent); }
+
+#editor strong { font-weight: 600; }
+#editor mark { background: var(--mark-bg); padding: 0 2px; border-radius: 2px; }
+
+/* 行内代码 */
+#editor code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+}
+
+/* 代码块 */
+#editor pre {
+  background: var(--code-bg);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 0.8em 0;
+  font-size: 0.88em;
+  line-height: 1.55;
+  position: relative;
+  tab-size: 2;
+}
+#editor pre code {
+  background: none;
+  padding: 0;
+  font-size: 1em;
+  display: block;
+  white-space: pre;
+  font-family: var(--font-code);
+}
+#editor pre::after {
+  content: attr(data-lang);
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 11px;
+  color: var(--faint);
+  font-family: var(--font-code);
+  pointer-events: none;
+}
+#editor pre:not([data-lang])::after { content: none; }
+
+/* 引用 */
+#editor blockquote {
+  margin: 0.8em 0;
+  padding: 0.2em 1em;
+  border-left: 4px solid var(--quote-border);
+  color: var(--quote-fg);
+}
+#editor blockquote blockquote { margin: 0.4em 0; }
+
+/* 列表 */
+#editor ul, #editor ol { margin: 0.5em 0; padding-left: 1.8em; }
+#editor li { margin: 0.25em 0; }
+#editor li > p { margin: 0.2em 0; }
+
+/* 任务列表 */
+#editor li.task-list-item { list-style: none; margin-left: -1.4em; }
+#editor li.task-list-item > input[type="checkbox"] {
+  margin: 0 0.5em 0 0;
+  vertical-align: middle;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* 分割线 */
+#editor hr {
+  border: none;
+  border-top: 2px solid var(--border);
+  margin: 1.6em 0;
+}
+
+/* 表格 */
+#editor table {
+  border-collapse: collapse;
+  margin: 0.9em 0;
+  min-width: 40%;
+}
+#editor th, #editor td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  min-width: 60px;
+}
+#editor th { background: var(--table-head-bg); font-weight: 600; }
+#editor tr:nth-child(even) td { background: color-mix(in srgb, var(--table-head-bg) 45%, transparent); }
+
+/* 图片 */
+#editor img { max-width: 100%; border-radius: 4px; }
+
+/* ===== 数学公式 ===== */
+#editor .math { cursor: pointer; border-radius: 4px; transition: background 0.15s; }
+#editor .math:hover { background: var(--accent-soft); }
+#editor .math.math-inline { padding: 0 2px; }
+#editor .math-block {
+  display: block;
+  text-align: center;
+  margin: 0.9em 0;
+  padding: 0.5em 0;
+  overflow-x: auto;
+}
+#editor .math-block .katex-display { margin: 0; }
+#editor .math-empty {
+  color: var(--faint);
+  font-family: var(--font-code);
+  font-size: 0.85em;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  display: inline-block;
+}
+#editor .math-error {
+  color: #d33;
+  background: rgba(220, 50, 50, 0.08);
+  font-family: var(--font-code);
+  font-size: 0.85em;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+#editor .math.selected { outline: 2px solid var(--accent); }
+
+/* 高亮块选中反馈 */
+#editor .caret-block { }
+
+/* 源码模式 */
+#source-wrap {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 24px 32px;
+  height: calc(100% - 48px);
+  box-sizing: border-box;
+}
+#source-wrap .CodeMirror {
+  height: 100%;
+  font-family: var(--font-code);
+  font-size: calc(var(--font-size) - 1px);
+  line-height: var(--line-height);
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+#source-wrap .CodeMirror-cursor { border-left-color: var(--accent); }
+#source-wrap .CodeMirror-selected { background: var(--selection) !important; }
+#source-wrap .CodeMirror-activeline-background { background: var(--hover); }
+#source-wrap .CodeMirror-gutters { background: var(--bg); border-right-color: var(--border); }
+#source-wrap .CodeMirror-linenumber { color: var(--faint); }
+
+/* 打印样式 */
+@media print {
+  #toolbar, #sidebar, #statusbar, .popover { display: none !important; }
+  #main { display: block; }
+  #editor-wrap, #editor-scroll { height: auto; overflow: visible; }
+  #editor { max-width: none; padding: 0; }
+  body { background: #fff; }
+}
+
+/* 专注模式：非当前块淡出 */
+body.focus-mode #editor > * { opacity: 0.3; transition: opacity 0.25s; }
+body.focus-mode #editor > .focus-current { opacity: 1; }
+
+/* 查找高亮（CSS Custom Highlight API） */
+::highlight(ml-find) { background-color: rgba(255, 193, 7, 0.4); }
+::highlight(ml-find-current) { background-color: rgba(255, 122, 0, 0.65); }
