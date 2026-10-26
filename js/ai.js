@@ -10,7 +10,7 @@
   var panel, instructionEl, outputEl, statusEl, sendBtn, stopBtn;
   var aborter = null;
   var running = false;
-  var pendingSelText = null; /* 开面板时保存的选区文本（聚焦输入框会销毁编辑器选区） */
+  var lastSelText = null; /* 最近一次编辑器选区（随 selectionchange 持续跟踪，不怕焦点销毁） */
 
   function $(sel) { return document.querySelector(sel); }
   function $all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
@@ -23,9 +23,22 @@
       var t = sel.toString().trim();
       if (t) return { text: t.slice(0, 12000), fromSelection: true };
     }
-    /* 当前选区已被输入框焦点销毁时，退回开面板时保存的选区 */
-    if (pendingSelText) return { text: pendingSelText, fromSelection: true };
+    /* 当前选区已被输入框焦点销毁时，退回最近跟踪到的选区 */
+    if (lastSelText) return { text: lastSelText, fromSelection: true };
     return { text: global.Wysiwyg.getMarkdown().slice(0, 12000), fromSelection: false };
+  }
+
+  /* 持续跟踪编辑器选区：选中即缓存+保存 Range；新光标（折叠）即清除 */
+  function trackSelection() {
+    var sel = window.getSelection();
+    if (!sel.rangeCount || !editor.contains(sel.anchorNode)) return;
+    if (!sel.isCollapsed) {
+      var t = sel.toString().trim();
+      lastSelText = t ? t.slice(0, 12000) : null;
+      global.Wysiwyg.saveSel();
+    } else {
+      lastSelText = null;
+    }
   }
 
   /* ---------------- 状态显示 ---------------- */
@@ -175,16 +188,6 @@
     $('#btn-ai').addEventListener('mousedown', function (e) { e.preventDefault(); });
     $('#btn-ai').addEventListener('click', function () {
       var opening = panel.classList.contains('hidden');
-      if (opening) {
-        /* 开面板前保存选区：随后聚焦指令输入框会销毁编辑器选区 */
-        var sel = window.getSelection();
-        pendingSelText = null;
-        if (sel.rangeCount && !sel.isCollapsed && editor.contains(sel.anchorNode)) {
-          var t = sel.toString().trim();
-          if (t) pendingSelText = t.slice(0, 12000);
-        }
-        global.Wysiwyg.saveSel();
-      }
       panel.classList.toggle('hidden');
       if (opening) instructionEl.focus();
     });
@@ -192,8 +195,8 @@
       panel.classList.add('hidden');
     });
 
-    /* 在编辑器内重新点击/选择时，开面板时的选区备份即失效 */
-    editor.addEventListener('mousedown', function () { pendingSelText = null; });
+    /* 持续跟踪编辑器选区（在面板获得焦点之前就缓存） */
+    document.addEventListener('selectionchange', trackSelection);
 
     /* 阻止按钮 mousedown 默认行为，避免点击时清掉编辑器选区 */
     $all('#ai-panel button').forEach(function (btn) {

@@ -122,12 +122,13 @@ function findBrowser() {
     }));
     await page.click('.ai-chip');
     await page.waitForFunction(() =>
-      document.getElementById('ai-output').textContent.includes('模拟 AI 输出'),
+      document.getElementById('ai-output').textContent.includes('原文共') &&
+      !document.getElementById('ai-send').disabled,
       { timeout: 8000 }
     );
     report('选区上下文未被焦点销毁（字数=选区而非全文）', await page.evaluate(() =>
       document.getElementById('ai-output').textContent.includes('原文共 8 字')
-    ));
+    ), await page.evaluate(() => document.getElementById('ai-output').textContent));
     await page.click('#ai-replace');
     await new Promise(r => setTimeout(r, 400));
     report('替换选区在开面板后仍准确替换原选中句', await page.evaluate(() => {
