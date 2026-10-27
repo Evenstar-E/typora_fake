@@ -167,7 +167,7 @@
    * 解析前做宽容修复：识别连续管道行块，补齐/规范化分隔行；
    * 代码块（围栏/缩进）、列表、引用内的管道一律不动。
    */
-  var TABLE_SKIP_RE = /^\s*(?:[>*+-]|\d+[.)])/; // 引用/列表行不参与表格块
+  var TABLE_SKIP_RE = /^\s*(?:[>*+-]\s|\d+[.)]\s)/; // 引用/列表行不参与表格块（须后跟空格，避免误伤 "25.0% | ..."）
 
   function isFence(line) {
     return /^\s{0,3}(```|~~~)/.test(line);
@@ -250,6 +250,75 @@
     return joined;
   }
 
+  /* PDF "片式"表格修复（第三阶段）：
+   * SLAM Handbook 这类转换器把表头切成多片（每片无前导管道，
+   * 如 "25.0% | 稠密 GLC"），再把 em-dash 分隔行 + 全部数据行压进最后一片。
+   * 识别特征：块内某行含 em-dash 分隔段，且其前的片都不以 | 开头。
+   * 修复：以 em-dash 段为锚 → 锚前各片拼成一行表头；
+   * 锚后按 "| |"（空单元格边界）切成数据行。 */
+  function fixFragmentedTable(block) {
+    /* 找到含 em-dash 分隔段且前面有 ≥2 片的行 */
+    var anchorIdx = -1;
+    for (var i = 1; i < block.length; i++) {
+      if (/\|\s*[—–]\s*\|/.test(block[i])) { anchorIdx = i; break; }
+    }
+    if (anchorIdx === -1) return null;
+
+    /* 锚行 = 表头尾片 + (可能的悬空 |) + em-dash 段 + 数据段 */
+    var anchor = block[anchorIdx];
+    var dashStart = anchor.indexOf('—') !== -1 ? anchor.indexOf('—') : anchor.indexOf('–');
+    if (dashStart === -1) return null;
+    /* em-dash 段从其前最近的管道起，到最后一个 em-dash 后的管道止 */
+    var segStart = anchor.lastIndexOf('|', dashStart);
+    if (segStart === -1) return null;
+    var dashEnd = anchor.lastIndexOf('—') !== -1 ? anchor.lastIndexOf('—') : anchor.lastIndexOf('–');
+    var segEnd = anchor.indexOf('|', dashEnd);
+    if (segEnd === -1) return null;
+    var headTail = anchor.slice(0, segStart);   /* 表头尾片（如 "87.5% "） */
+    var dashPart = anchor.slice(segStart, segEnd + 1); /* em-dash 分隔段 */
+    var rest = anchor.slice(segEnd + 1);        /* 数据段 */
+
+    /* 锚前所有片（含锚行头部尾片）拼成表头。
+     * 每片 = 一列；片内管道是 PDF 表头单元格换行（如 "25.0% | 稠密 GLC"），
+     * 换成空格保持单元格内文字。 */
+    var headFrags = block.slice(0, anchorIdx).map(function (s) {
+      return s.trim().replace(/^\|/, '').replace(/\|$/, '').trim().replace(/\|/g, ' ');
+    });
+    if (headTail.trim()) {
+      headFrags.push(headTail.trim().replace(/\|+$/, '').replace(/\|/g, ' ').trim());
+    }
+    if (headFrags.length < 2) return null;
+    var header = '|' + headFrags.join('|') + '|';
+    var target = headFrags.length;
+
+    /* em-dash 段只是 PDF 装饰，列数不可信：按表头列数生成规范分隔行 */
+    var divider = '|' + new Array(target).fill(' --- ').join('|') + '|';
+
+    /* 数据段按 "| |"（空单元格 = 行分界）切开；首尾补齐管道 */
+    var restNorm = rest.trim();
+    if (!/^\|/.test(restNorm)) restNorm = '|' + restNorm;
+    if (!/\|$/.test(restNorm)) restNorm = restNorm + '|';
+    var bodyRows = restNorm.split(/\|\s*\|/).map(function (s) {
+      s = s.trim().replace(/^\|/, '').replace(/\|$/, '').trim();
+      if (!s) return null;
+      return s;
+    }).filter(Boolean);
+    if (!bodyRows.length) return null;
+
+    var fixed = [header, divider];
+    for (var r = 0; r < bodyRows.length; r++) {
+      /* 数据行内管道是真实列分隔；单元格可能含空段（PDF 装饰），清理纯装饰段 */
+      var cells = bodyRows[r].split('|').map(function (c) { return c.trim(); });
+      /* 首尾空段来自补齐的管道，去掉 */
+      if (cells.length && cells[0] === '') cells.shift();
+      if (cells.length && cells[cells.length - 1] === '') cells.pop();
+      while (cells.length < target) cells.push('');
+      cells = cells.slice(0, target);
+      fixed.push('|' + cells.join('|') + '|');
+    }
+    return fixed;
+  }
+
   function preprocessTables(src) {
     var lines = src.split(/\r?\n/);
     var out = [];
@@ -269,10 +338,19 @@
         continue;
       }
 
-      /* 收集连续管道行块 */
+      /* 收集连续管道行块。
+       * isPipeRowLoose：片式表头的每片可能只有 1 个管道（"25.0% | 稠密 GLC"），
+       * 进入块收集后放宽为"行内含管道即可"，仍排除围栏/列表/缩进代码。 */
+      function isPipeRowLoose(ln) {
+        var t = ln.trim();
+        if (t.indexOf('|') === -1 || t.length > 2000) return false;
+        if (TABLE_SKIP_RE.test(ln)) return false;
+        if (/^ {4}/.test(ln)) return false;
+        return true;
+      }
       var block = [line];
       var j = i + 1;
-      while (j < lines.length && !isFence(lines[j]) && isPipeRow(lines[j])) {
+      while (j < lines.length && !isFence(lines[j]) && isPipeRowLoose(lines[j])) {
         block.push(lines[j]);
         j++;
       }
@@ -281,6 +359,15 @@
       var divIdx = -1;
       for (var k = 0; k < block.length; k++) {
         if (isDividerRow(block[k])) { divIdx = k; break; }
+      }
+
+      /* PDF "片式"结构优先（必须在断行拼接前：片式表头每片都无前导管道，
+       * join 会把它们错误地拼进上一行导致块只剩 1 行） */
+      var fragFixed = (block.length >= 3) ? fixFragmentedTable(block) : null;
+      if (fragFixed) {
+        for (var ff = 0; ff < fragFixed.length; ff++) out.push(fragFixed[ff]);
+        i = j;
+        continue;
       }
 
       /* PDF 断行拼接：无前导管道的行并回上一行（分隔行不动） */
@@ -307,6 +394,14 @@
         block[cb] = (hadLead ? '|' : '') + cells2.join('|') + (hadTrail ? '|' : '');
         if (!hadLead) block[cb] = '|' + block[cb];
         if (!hadTrail) block[cb] = block[cb] + '|';
+      }
+
+      /* PDF "片式"结构优先：锚前多片表头 + 锚内压扁数据 */
+      var fragFixed = (block.length >= 3) ? fixFragmentedTable(block) : null;
+      if (fragFixed) {
+        for (var ff = 0; ff < fragFixed.length; ff++) out.push(fragFixed[ff]);
+        i = j;
+        continue;
       }
 
       if (divIdx === -1 && block.length >= 2) {
